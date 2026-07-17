@@ -3,6 +3,7 @@ import { Link, useRouter } from '../../router';
 import { supabase, type PostRow } from '../../lib/supabase';
 import { Seo } from '../../components/Seo';
 import { RichTextEditor } from '../../components/RichTextEditor';
+import { YouTubeEmbed } from '../../components/YouTubeEmbed';
 import { categories } from '../../content/categories';
 import { slugify, extractYouTubeId, estimateReadTime } from '../../lib/editor-utils';
 import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -203,7 +204,7 @@ export function AdminEditorPage({ slug }: Props) {
               <input type="url" value={youtubeUrl} onPaste={handleYoutubePaste} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="Paste YouTube URL…" className="mt-3 w-full rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none" />
               {youtubeId && (
                 <div className="mt-3 overflow-hidden rounded-xl">
-                  <div className="aspect-video bg-ink-950"><iframe className="h-full w-full" src={`https://www.youtube.com/embed/${youtubeId}`} title="Video preview" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+                  <YouTubeEmbed videoId={youtubeId} title="Video preview" />
                   <p className="mt-1.5 text-xs text-success-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Video ID: {youtubeId}</p>
                 </div>
               )}

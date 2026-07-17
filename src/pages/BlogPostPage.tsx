@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Seo, SITE_URL } from '../components/Seo';
+import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { FaqAccordion } from '../components/FaqAccordion';
 import { TableOfContents } from '../components/TableOfContents';
@@ -112,9 +113,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
               {post.youtube_id && (
                 <div className="mt-8">
                   <h2 className="font-display text-xl font-bold text-ink-950 mb-3">Related Video</h2>
-                  <div className="aspect-video overflow-hidden rounded-2xl">
-                    <iframe className="h-full w-full" src={`https://www.youtube.com/embed/${post.youtube_id}`} title={post.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                  </div>
+                  <YouTubeEmbed videoId={post.youtube_id} title={post.title} />
                 </div>
               )}
               {post.tags && post.tags.length > 0 && (
