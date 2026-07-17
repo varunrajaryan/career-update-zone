@@ -1,0 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+export type FaqItem = { q: string; a: string };
+export type VideoItem = { id: string; title: string; thumbnail: string; publishedAt: string; description: string };
+export type ChannelStats = { channelId: string; title: string; description: string; thumbnail: string; country: string; customUrl: string; subscriberCount: string; viewCount: string; videoCount: string; hiddenSubscriberCount: boolean; videos: VideoItem[]; fetchedAt: string; cached?: boolean; cachedAt?: string };
+export type PostRow = { id: string; slug: string; title: string; excerpt: string; body: string; cover: string; youtube_id: string; category: string; tags: string[]; author: string; status: string; read_time: number; date: string; last_updated: string; seo_title: string | null; seo_description: string | null; faqs: FaqItem[] | null; created_at: string; updated_at: string };
+export type BlogPost = PostRow;
