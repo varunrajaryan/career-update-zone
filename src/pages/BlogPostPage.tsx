@@ -79,7 +79,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
     description: seoDesc,
     thumbnailUrl: `https://img.youtube.com/vi/${post.youtube_id}/maxresdefault.jpg`,
     uploadDate: post.date,
-    embedUrl: `https://www.youtube-nocookie.com/embed/${post.youtube_id}`,
+    embedUrl: `https://www.youtube.com/embed/${post.youtube_id}`,
     contentUrl: `https://www.youtube.com/watch?v=${post.youtube_id}`,
   } : null;
 
@@ -113,7 +113,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
                 <div className="mt-8">
                   <h2 className="font-display text-xl font-bold text-ink-950 mb-3">Related Video</h2>
                   <div className="aspect-video overflow-hidden rounded-2xl">
-                    <iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${post.youtube_id}`} title={post.title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    <iframe className="h-full w-full" src={`https://www.youtube.com/embed/${post.youtube_id}`} title={post.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                   </div>
                 </div>
               )}

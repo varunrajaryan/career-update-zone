@@ -203,7 +203,7 @@ export function AdminEditorPage({ slug }: Props) {
               <input type="url" value={youtubeUrl} onPaste={handleYoutubePaste} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="Paste YouTube URL…" className="mt-3 w-full rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm focus:border-brand-400 focus:outline-none" />
               {youtubeId && (
                 <div className="mt-3 overflow-hidden rounded-xl">
-                  <div className="aspect-video bg-ink-950"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${youtubeId}`} title="Video preview" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+                  <div className="aspect-video bg-ink-950"><iframe className="h-full w-full" src={`https://www.youtube.com/embed/${youtubeId}`} title="Video preview" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
                   <p className="mt-1.5 text-xs text-success-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Video ID: {youtubeId}</p>
                 </div>
               )}
