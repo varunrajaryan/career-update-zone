@@ -6,7 +6,7 @@ Disallow: /admin/login
 Disallow: /admin/new
 Disallow: /admin/edit
 
-# Block indexing of API and internal endpoints
+# Block indexing of internal search
 Disallow: /*?q=
 
 # Allow crawling of blog and category pages
@@ -22,12 +22,17 @@ Allow: /contact
 User-agent: Googlebot
 Allow: /
 
+User-agent: Googlebot-News
+Allow: /
+
 User-agent: Bingbot
 Allow: /
 
 User-agent: Yandex
 Allow: /
 
-# Sitemap and host
+# Sitemaps and host
 Host: https://careerupdatezone.com
 Sitemap: https://careerupdatezone.com/sitemap.xml
+Sitemap: https://careerupdatezone.com/image-sitemap.xml
+Sitemap: https://careerupdatezone.com/news-sitemap.xml

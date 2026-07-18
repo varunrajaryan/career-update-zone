@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Seo } from '../components/Seo';
+import { Seo, buildItemListSchema } from '../components/Seo';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { BlogCard } from '../components/BlogCard';
 import { SearchBar } from '../components/SearchBar';
@@ -23,9 +23,11 @@ export function BlogPage() {
     return matchCat && matchSearch;
   }), [posts, activeCategory, effectiveSearch]);
 
+  const itemListSchema = useMemo(() => buildItemListSchema(filtered.map((p) => ({ name: p.title, url: `/blog/${p.slug}` }))), [filtered]);
+
   return (
     <>
-      <Seo title="Blog" description="Latest articles and job notifications from Career Update Zone." canonical="/blog" />
+      <Seo title="Blog" description="Latest articles and job notifications from Career Update Zone." canonical="/blog" schema={itemListSchema} />
       <div className="border-b border-ink-100 bg-white">
         <div className="container-content py-8">
           <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Blog' }]} />

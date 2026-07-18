@@ -16,6 +16,7 @@ type SeoProps = {
   prev?: { url: string; title: string };
   next?: { url: string; title: string };
   schema?: SchemaObject | SchemaObject[];
+  speakable?: boolean;
 };
 
 function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
@@ -32,18 +33,21 @@ function removeMeta(attr: 'name' | 'property', key: string) {
   document.querySelector(`meta[${attr}="${key}"]`)?.remove();
 }
 
-function upsertLink(rel: string, href: string) {
-  let el = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+function upsertLink(rel: string, href: string, hreflang?: string) {
+  const selector = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]:not([hreflang])`;
+  let el = document.querySelector(selector) as HTMLLinkElement | null;
   if (!el) {
     el = document.createElement('link');
     el.rel = rel;
+    if (hreflang) el.setAttribute('hreflang', hreflang);
     document.head.appendChild(el);
   }
   el.href = href;
 }
 
-function removeLink(rel: string) {
-  document.querySelector(`link[rel="${rel}"]`)?.remove();
+function removeLink(rel: string, hreflang?: string) {
+  const selector = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]:not([hreflang])`;
+  document.querySelector(selector)?.remove();
 }
 
 function upsertSchema(id: string, data: SchemaObject | SchemaObject[]) {
@@ -61,7 +65,7 @@ function removeById(id: string) {
   document.getElementById(id)?.remove();
 }
 
-export function Seo({ title, description, canonical, ogImage, ogType = 'website', noindex = false, keywords, prev, next, schema }: SeoProps) {
+export function Seo({ title, description, canonical, ogImage, ogType = 'website', noindex = false, keywords, prev, next, schema, speakable = false }: SeoProps) {
   useEffect(() => {
     const fullTitle = title ? `${title} — ${channel.name}` : `${channel.name} — Sarkari Job Updates, Results & Career Guidance`;
     document.title = fullTitle;
@@ -86,6 +90,10 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
     }
 
     upsertLink('canonical', canonicalUrl);
+
+    // hreflang: en-IN default + x-default
+    upsertLink('alternate', canonicalUrl, 'en-IN');
+    upsertLink('alternate', canonicalUrl, 'x-default');
 
     if (prev) {
       upsertLink('prev', `${SITE_URL}${prev.url}`);
@@ -140,8 +148,24 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
       },
     };
 
+    const webPageSchema: SchemaObject = {
+      '@context': 'https://schema.org',
+      '@type': ogType === 'article' ? 'Article' : 'WebPage',
+      name: fullTitle,
+      description: desc,
+      url: canonicalUrl,
+      isPartOf: { '@type': 'WebSite', name: channel.name, url: SITE_URL },
+      ...(speakable ? {
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['h1', '.prose-content h2'],
+        },
+      } : {}),
+    };
+
     upsertSchema('schema-organization', orgSchema);
     upsertSchema('schema-website', websiteSchema);
+    upsertSchema('schema-webpage', webPageSchema);
 
     if (schema) {
       upsertSchema('schema-page', schema);
@@ -154,7 +178,7 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
       removeLink('prev');
       removeLink('next');
     };
-  }, [title, description, canonical, ogImage, ogType, noindex, keywords, prev, next, schema]);
+  }, [title, description, canonical, ogImage, ogType, noindex, keywords, prev, next, schema, speakable]);
 
   return null;
 }
@@ -167,5 +191,42 @@ export function buildPersonSchema(name: string, url?: string): SchemaObject {
     ...(url ? { url: `${SITE_URL}${url}` } : {}),
     jobTitle: 'Career Guidance Expert',
     worksFor: { '@type': 'Organization', name: channel.name, url: SITE_URL },
+  };
+}
+
+export function buildCollectionPageSchema(name: string, description: string, canonical: string): SchemaObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name,
+    description,
+    url: `${SITE_URL}${canonical}`,
+    isPartOf: { '@type': 'WebSite', name: channel.name, url: SITE_URL },
+  };
+}
+
+export function buildItemListSchema(items: { name: string; url: string }[]): SchemaObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      url: `${SITE_URL}${item.url}`,
+    })),
+  };
+}
+
+export function buildVideoObjectSchema(video: { id: string; title: string; description: string; uploadDate: string; thumbnail?: string }): SchemaObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: video.title,
+    description: video.description,
+    thumbnailUrl: video.thumbnail || `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`,
+    uploadDate: video.uploadDate,
+    embedUrl: `https://www.youtube.com/embed/${video.id}`,
+    contentUrl: `https://www.youtube.com/watch?v=${video.id}`,
   };
 }

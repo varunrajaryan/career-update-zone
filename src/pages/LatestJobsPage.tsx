@@ -1,4 +1,4 @@
-import { Seo } from '../components/Seo';
+import { Seo, buildItemListSchema } from '../components/Seo';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { BlogCard } from '../components/BlogCard';
 import { usePublishedPosts } from '../lib/usePosts';
@@ -8,9 +8,10 @@ import { Link } from '../router';
 export function LatestJobsPage() {
   const { posts, loading } = usePublishedPosts();
   const jobs = posts.filter((p) => p.category === 'latest-jobs' || p.category === 'admit-card' || p.category === 'result');
+  const itemListSchema = buildItemListSchema(jobs.map((p) => ({ name: p.title, url: `/blog/${p.slug}` })));
   return (
     <>
-      <Seo title="Latest Jobs" description="Latest Sarkari job notifications, admit cards, and results." canonical="/latest-jobs" />
+      <Seo title="Latest Jobs" description="Latest Sarkari job notifications, admit cards, and results." canonical="/latest-jobs" schema={itemListSchema} />
       <div className="border-b border-ink-100 bg-white">
         <div className="container-content py-8">
           <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Latest Jobs' }]} />

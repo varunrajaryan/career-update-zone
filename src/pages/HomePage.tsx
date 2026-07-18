@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Seo } from '../components/Seo';
 import { Link } from '../router';
 import { BlogCard } from '../components/BlogCard';
@@ -14,6 +15,20 @@ export function HomePage() {
   const { data: yt, loading: ytLoading } = useYouTubeChannel();
   const featured = posts[0];
   const recent = posts.slice(1, 7);
+
+  useEffect(() => {
+    const id = 'preload-hero';
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = 'https://images.pexels.com/photos/5905702/pexels-photo-5905702.jpeg';
+      link.setAttribute('fetchpriority', 'high');
+      document.head.appendChild(link);
+    }
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
 
   return (
     <>

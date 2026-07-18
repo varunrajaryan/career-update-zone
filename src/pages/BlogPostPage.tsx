@@ -92,7 +92,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
 
   return (
     <>
-      <Seo title={seoTitle} description={seoDesc} canonical={`/blog/${post.slug}`} ogImage={post.cover} ogType="article" keywords={post.tags || []} prev={prevMeta} next={nextMeta} schema={pageSchema} />
+      <Seo title={seoTitle} description={seoDesc} canonical={`/blog/${post.slug}`} ogImage={post.cover} ogType="article" keywords={post.tags || []} prev={prevMeta} next={nextMeta} schema={pageSchema} speakable />
       <article>
         <div className="border-b border-ink-100 bg-white">
           <div className="container-content py-6">

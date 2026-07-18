@@ -1,4 +1,4 @@
-import { Seo } from '../components/Seo';
+import { Seo, buildCollectionPageSchema } from '../components/Seo';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { Link } from '../router';
 import { categories } from '../content/categories';
@@ -9,9 +9,10 @@ import { ArrowRight } from 'lucide-react';
 export function CategoriesPage() {
   const { posts } = usePublishedPosts();
   const counts = categories.map((cat) => ({ ...cat, count: posts.filter((p) => p.category === cat.slug).length }));
+  const collectionSchema = buildCollectionPageSchema('Categories', 'Browse all job update categories on Career Update Zone.', '/categories');
   return (
     <>
-      <Seo title="Categories" description="Browse all job update categories." canonical="/categories" />
+      <Seo title="Categories" description="Browse all job update categories." canonical="/categories" schema={collectionSchema} />
       <div className="border-b border-ink-100 bg-white">
         <div className="container-content py-8">
           <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Categories' }]} />

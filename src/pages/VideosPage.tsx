@@ -1,4 +1,4 @@
-import { Seo } from '../components/Seo';
+import { Seo, buildVideoObjectSchema } from '../components/Seo';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { useYouTubeChannel } from '../lib/useYouTube';
 import { channel } from '../content/channel';
@@ -7,9 +7,16 @@ import { Video } from 'lucide-react';
 
 export function VideosPage() {
   const { data: yt, loading, error } = useYouTubeChannel();
+  const videoSchemas = yt?.videos?.slice(0, 12).map((v) => buildVideoObjectSchema({
+    id: v.id,
+    title: v.title,
+    description: v.description,
+    uploadDate: v.publishedAt,
+    thumbnail: v.thumbnail,
+  })) || [];
   return (
     <>
-      <Seo title="Videos" description="Watch the latest videos from Career Update Zone on YouTube." canonical="/videos" />
+      <Seo title="Videos" description="Watch the latest videos from Career Update Zone on YouTube." canonical="/videos" schema={videoSchemas} />
       <div className="border-b border-ink-100 bg-white">
         <div className="container-content py-8">
           <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Videos' }]} />

@@ -1,6 +1,6 @@
 /**
- * Generates sitemap.xml and rss.xml from Supabase blog_posts table.
- * Run before vite build: node scripts/generate-seo.mjs
+ * Generates sitemap.xml, image-sitemap.xml, news-sitemap.xml, and rss.xml
+ * from Supabase blog_posts table. Run before vite build: node scripts/generate-seo.mjs
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
@@ -21,7 +21,7 @@ const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_
 let posts = [];
 if (supabaseUrl && anonKey) {
   try {
-    const res = await fetch(`${supabaseUrl}/rest/v1/blog_posts?select=slug,title,excerpt,date,last_updated&status=eq.published&order=date.desc`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/blog_posts?select=slug,title,excerpt,date,last_updated,cover,youtube_id,category&status=eq.published&order=date.desc`, {
       headers: {
         apikey: anonKey,
         Authorization: `Bearer ${anonKey}`,
@@ -44,10 +44,12 @@ if (posts.length === 0) {
   const re = /slug:\s*'([^']+)'[\s\S]*?title:\s*'([^']+)'[\s\S]*?excerpt:\s*'([^']+)'[\s\S]*?date:\s*'([^']+)'[\s\S]*?lastUpdated:\s*'([^']+)'/g;
   let m;
   while ((m = re.exec(src)) !== null) {
-    posts.push({ slug: m[1], title: m[2], excerpt: m[3].replace(/\\'/g, "'"), date: m[4], last_updated: m[5] });
+    posts.push({ slug: m[1], title: m[2], excerpt: m[3].replace(/\\'/g, "'"), date: m[4], last_updated: m[5], cover: '', youtube_id: '', category: '' });
   }
   console.log(`Using ${posts.length} static posts for SEO`);
 }
+
+const escapeXml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
 // Static pages
 const staticPages = [
@@ -68,7 +70,7 @@ const categorySlugs = [
   'answer-key', 'syllabus', 'scholarships', 'government-schemes', 'exam-preparation',
 ];
 
-// Generate sitemap.xml
+// --- sitemap.xml ---
 const sitemapEntries = [
   ...staticPages.map((p) => `  <url><loc>${SITE_URL}${p.path}</loc><changefreq>${p.changefreq}</changefreq><priority>${p.priority}</priority></url>`),
   ...posts.map((p) => `  <url><loc>${SITE_URL}/blog/${p.slug}</loc><lastmod>${p.last_updated}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`),
@@ -81,15 +83,53 @@ ${sitemapEntries.join('\n')}
 </urlset>
 `;
 
-// Generate RSS feed
-const escapeXml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+// --- image-sitemap.xml ---
+const imageEntries = posts
+  .filter((p) => p.cover)
+  .map((p) => `  <url>
+    <loc>${SITE_URL}/blog/${p.slug}</loc>
+    <image:image>
+      <image:loc>${escapeXml(p.cover)}</image:loc>
+      <image:title>${escapeXml(p.title)}</image:title>
+      <image:caption>${escapeXml(p.excerpt)}</image:caption>
+    </image:image>
+  </url>`);
 
+const imageSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${imageEntries.join('\n')}
+</urlset>
+`;
+
+// --- news-sitemap.xml (posts from last 2 days) ---
+const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+const newsPosts = posts.filter((p) => new Date(p.date) >= twoDaysAgo);
+const newsEntries = newsPosts.map((p) => `  <url>
+    <loc>${SITE_URL}/blog/${p.slug}</loc>
+    <news:news>
+      <news:publication>
+        <news:name>${escapeXml(SITE_NAME)}</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>${new Date(p.date).toISOString()}</news:publication_date>
+      <news:title>${escapeXml(p.title)}</news:title>
+    </news:news>
+  </url>`);
+
+const newsSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+${newsEntries.join('\n')}
+</urlset>
+`;
+
+// --- RSS feed ---
 const rssItems = posts.map((p) => `    <item>
       <title>${escapeXml(p.title)}</title>
       <link>${SITE_URL}/blog/${p.slug}</link>
       <guid>${SITE_URL}/blog/${p.slug}</guid>
       <description>${escapeXml(p.excerpt)}</description>
       <pubDate>${new Date(p.date).toUTCString()}</pubDate>
+      ${p.cover ? `<enclosure url="${escapeXml(p.cover)}" type="image/jpeg" />` : ''}
     </item>`).join('\n');
 
 const rss = `<?xml version="1.0" encoding="UTF-8"?>
@@ -98,7 +138,7 @@ const rss = `<?xml version="1.0" encoding="UTF-8"?>
     <title>${escapeXml(SITE_NAME)}</title>
     <link>${SITE_URL}</link>
     <description>${escapeXml(SITE_DESC)}</description>
-    <language>en-us</language>
+    <language>en-IN</language>
     <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
 ${rssItems}
   </channel>
@@ -107,8 +147,12 @@ ${rssItems}
 
 mkdirSync(dist, { recursive: true });
 writeFileSync(join(root, 'public/sitemap.xml'), sitemap);
+writeFileSync(join(root, 'public/image-sitemap.xml'), imageSitemap);
+writeFileSync(join(root, 'public/news-sitemap.xml'), newsSitemap);
 writeFileSync(join(root, 'public/rss.xml'), rss);
 writeFileSync(join(dist, 'sitemap.xml'), sitemap);
+writeFileSync(join(dist, 'image-sitemap.xml'), imageSitemap);
+writeFileSync(join(dist, 'news-sitemap.xml'), newsSitemap);
 writeFileSync(join(dist, 'rss.xml'), rss);
 
-console.log(`Generated sitemap.xml (${staticPages.length + posts.length + categorySlugs.length} URLs) and rss.xml (${posts.length} articles)`);
+console.log(`Generated sitemap.xml (${sitemapEntries.length} URLs), image-sitemap.xml (${imageEntries.length} images), news-sitemap.xml (${newsEntries.length} articles), rss.xml (${posts.length} articles)`);
