@@ -56,6 +56,8 @@ export function injectHeadingIds(html: string): string {
   return html.replace(/<h([23])([^>]*)>(.*?)<\/h\1>/gi, (match, level, attrs, content) => {
     const text = content.replace(/<[^>]*>/g, '').trim();
     const id = slugify(text);
-    return `<h${level}${attrs} id="${id}">${content}</h${level}>`;
+    const existingIdMatch = attrs.match(/\sid="[^"]*"/i);
+    const cleanedAttrs = existingIdMatch ? attrs.replace(existingIdMatch[0], '') : attrs;
+    return `<h${level}${cleanedAttrs} id="${id}">${content}</h${level}>`;
   });
 }
