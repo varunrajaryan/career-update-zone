@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { channel } from '../content/channel';
 
-const SITE_URL = 'https://careerupdatezone.com';
+export const SITE_URL = 'https://careerupdatezone.com';
 
 type SchemaObject = Record<string, unknown>;
 
@@ -12,6 +12,9 @@ type SeoProps = {
   ogImage?: string;
   ogType?: string;
   noindex?: boolean;
+  keywords?: string[];
+  prev?: { url: string; title: string };
+  next?: { url: string; title: string };
   schema?: SchemaObject | SchemaObject[];
 };
 
@@ -25,6 +28,10 @@ function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
   el.setAttribute('content', content);
 }
 
+function removeMeta(attr: 'name' | 'property', key: string) {
+  document.querySelector(`meta[${attr}="${key}"]`)?.remove();
+}
+
 function upsertLink(rel: string, href: string) {
   let el = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
   if (!el) {
@@ -33,6 +40,10 @@ function upsertLink(rel: string, href: string) {
     document.head.appendChild(el);
   }
   el.href = href;
+}
+
+function removeLink(rel: string) {
+  document.querySelector(`link[rel="${rel}"]`)?.remove();
 }
 
 function upsertSchema(id: string, data: SchemaObject | SchemaObject[]) {
@@ -50,7 +61,7 @@ function removeById(id: string) {
   document.getElementById(id)?.remove();
 }
 
-export function Seo({ title, description, canonical, ogImage, ogType = 'website', noindex = false, schema }: SeoProps) {
+export function Seo({ title, description, canonical, ogImage, ogType = 'website', noindex = false, keywords, prev, next, schema }: SeoProps) {
   useEffect(() => {
     const fullTitle = title ? `${title} — ${channel.name}` : `${channel.name} — Sarkari Job Updates, Results & Career Guidance`;
     document.title = fullTitle;
@@ -59,36 +70,51 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
     const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : SITE_URL;
     const image = ogImage || 'https://images.pexels.com/photos/5905702/pexels-photo-5905702.jpeg';
 
-    // Robots / indexability
     if (noindex) {
       upsertMeta('name', 'robots', 'noindex, nofollow');
     } else {
       upsertMeta('name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
     }
 
-    // Description
     upsertMeta('name', 'description', desc);
+    upsertMeta('name', 'author', channel.name);
 
-    // Canonical
+    if (keywords && keywords.length > 0) {
+      upsertMeta('name', 'keywords', keywords.join(', '));
+    } else {
+      removeMeta('name', 'keywords');
+    }
+
     upsertLink('canonical', canonicalUrl);
 
-    // Open Graph
+    if (prev) {
+      upsertLink('prev', `${SITE_URL}${prev.url}`);
+    } else {
+      removeLink('prev');
+    }
+    if (next) {
+      upsertLink('next', `${SITE_URL}${next.url}`);
+    } else {
+      removeLink('next');
+    }
+
     upsertMeta('property', 'og:title', fullTitle);
     upsertMeta('property', 'og:description', desc);
     upsertMeta('property', 'og:url', canonicalUrl);
     upsertMeta('property', 'og:type', ogType);
     upsertMeta('property', 'og:image', image);
+    upsertMeta('property', 'og:image:width', '1200');
+    upsertMeta('property', 'og:image:height', '630');
     upsertMeta('property', 'og:site_name', channel.name);
     upsertMeta('property', 'og:locale', 'en_IN');
 
-    // Twitter Cards
     upsertMeta('name', 'twitter:card', 'summary_large_image');
     upsertMeta('name', 'twitter:title', fullTitle);
     upsertMeta('name', 'twitter:description', desc);
     upsertMeta('name', 'twitter:image', image);
     upsertMeta('name', 'twitter:site', '@careerupdatezonee');
+    upsertMeta('name', 'twitter:creator', '@careerupdatezonee');
 
-    // Schema.org JSON-LD
     const orgSchema: SchemaObject = {
       '@context': 'https://schema.org',
       '@type': 'Organization',
@@ -117,7 +143,6 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
     upsertSchema('schema-organization', orgSchema);
     upsertSchema('schema-website', websiteSchema);
 
-    // Page-specific schema
     if (schema) {
       upsertSchema('schema-page', schema);
     } else {
@@ -125,12 +150,22 @@ export function Seo({ title, description, canonical, ogImage, ogType = 'website'
     }
 
     return () => {
-      // Clean up page-specific schema on unmount
       removeById('schema-page');
+      removeLink('prev');
+      removeLink('next');
     };
-  }, [title, description, canonical, ogImage, ogType, noindex, schema]);
+  }, [title, description, canonical, ogImage, ogType, noindex, keywords, prev, next, schema]);
 
   return null;
 }
 
-export { SITE_URL };
+export function buildPersonSchema(name: string, url?: string): SchemaObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name,
+    ...(url ? { url: `${SITE_URL}${url}` } : {}),
+    jobTitle: 'Career Guidance Expert',
+    worksFor: { '@type': 'Organization', name: channel.name, url: SITE_URL },
+  };
+}

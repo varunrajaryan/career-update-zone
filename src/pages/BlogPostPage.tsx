@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Seo, SITE_URL } from '../components/Seo';
+import { Seo, SITE_URL, buildPersonSchema } from '../components/Seo';
 import { YouTubeEmbed } from '../components/YouTubeEmbed';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { FaqAccordion } from '../components/FaqAccordion';
@@ -84,11 +84,15 @@ export function BlogPostPage({ slug }: { slug: string }) {
     contentUrl: `https://www.youtube.com/watch?v=${post.youtube_id}`,
   } : null;
 
-  const pageSchema = [articleSchema, breadcrumbSchema, ...(faqSchema ? [faqSchema] : []), ...(videoSchema ? [videoSchema] : [])];
+  const personSchema = buildPersonSchema(post.author);
+  const pageSchema = [articleSchema, breadcrumbSchema, personSchema, ...(faqSchema ? [faqSchema] : []), ...(videoSchema ? [videoSchema] : [])];
+
+  const prevMeta = prev ? { url: `/blog/${prev.slug}`, title: prev.title } : undefined;
+  const nextMeta = next ? { url: `/blog/${next.slug}`, title: next.title } : undefined;
 
   return (
     <>
-      <Seo title={seoTitle} description={seoDesc} canonical={`/blog/${post.slug}`} ogImage={post.cover} ogType="article" schema={pageSchema} />
+      <Seo title={seoTitle} description={seoDesc} canonical={`/blog/${post.slug}`} ogImage={post.cover} ogType="article" keywords={post.tags || []} prev={prevMeta} next={nextMeta} schema={pageSchema} />
       <article>
         <div className="border-b border-ink-100 bg-white">
           <div className="container-content py-6">

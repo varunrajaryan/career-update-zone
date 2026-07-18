@@ -90,7 +90,7 @@ export function TermsPage() {
 export function NotFoundPage() {
   return (
     <>
-      <Seo title="404 — Page Not Found" description="The page you are looking for does not exist." noindex />
+      <Seo title="404 — Page Not Found" description="The page you are looking for does not exist." canonical="/" noindex />
       <div className="container-content py-32 text-center">
         <p className="font-display text-8xl font-bold text-brand-200">404</p>
         <h1 className="mt-4 font-display text-2xl font-bold text-ink-950">Page Not Found</h1>
