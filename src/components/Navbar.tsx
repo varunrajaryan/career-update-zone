@@ -22,7 +22,11 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-white/90 backdrop-blur-xl">
       <nav className="container-content flex h-16 items-center justify-between" aria-label="Main navigation">
         <Link to="/" className="flex items-center gap-2" aria-label="Career Update Zone home">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white"><Video className="h-5 w-5" aria-hidden="true" /></span>
+          <img
+            src="/logo1 copy copy.png"
+            alt="Career Update Zone"
+            className="h-12 w-12 rounded-full object-cover md:h-[60px] md:w-[60px]"
+          />
           <span className="font-display text-lg font-bold text-ink-950">{channel.name}</span>
         </Link>
         <div className="hidden items-center gap-1 md:flex">
