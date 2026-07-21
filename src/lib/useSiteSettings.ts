@@ -33,10 +33,12 @@ function edgeUrl(action?: string) {
   return action ? `${base}?action=${action}` : base;
 }
 
-function authHeaders(): HeadersInit {
+async function authHeaders(): Promise<HeadersInit> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    Authorization: `Bearer ${token}`,
   };
 }
 
@@ -49,7 +51,7 @@ export function useSiteSettings() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(edgeUrl(), { headers: authHeaders() });
+      const res = await fetch(edgeUrl(), { headers: await authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Failed to load settings (${res.status})`);
       setSettings({ ...EMPTY_SETTINGS, ...(data.settings as SiteSettings) });
@@ -66,7 +68,7 @@ export function useSiteSettings() {
   const saveSections = useCallback(async (sections: Partial<Record<SectionName, SettingsSection>>): Promise<void> => {
     const res = await fetch(edgeUrl(), {
       method: 'PUT',
-      headers: authHeaders(),
+      headers: await authHeaders(),
       body: JSON.stringify({ sections }),
     });
     const data = await res.json();
@@ -77,7 +79,7 @@ export function useSiteSettings() {
 
   // Export all settings (including raw secrets) for download.
   const exportSettings = useCallback(async (): Promise<SiteSettings> => {
-    const res = await fetch(edgeUrl('export'), { headers: authHeaders() });
+    const res = await fetch(edgeUrl('export'), { headers: await authHeaders() });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || `Export failed (${res.status})`);
     return data.settings as SiteSettings;
@@ -87,7 +89,7 @@ export function useSiteSettings() {
   const importSettings = useCallback(async (incoming: SiteSettings): Promise<void> => {
     const res = await fetch(edgeUrl('import'), {
       method: 'POST',
-      headers: authHeaders(),
+      headers: await authHeaders(),
       body: JSON.stringify({ settings: incoming }),
     });
     const data = await res.json();
@@ -99,7 +101,7 @@ export function useSiteSettings() {
   const resetSections = useCallback(async (sections: SectionName[]): Promise<void> => {
     const res = await fetch(edgeUrl('reset'), {
       method: 'POST',
-      headers: authHeaders(),
+      headers: await authHeaders(),
       body: JSON.stringify({ sections }),
     });
     const data = await res.json();
@@ -145,7 +147,7 @@ export async function saveAiSettings(
 ) {
   const res = await fetch(edgeUrl(), {
     method: 'PUT',
-    headers: authHeaders(),
+    headers: await authHeaders(),
     body: JSON.stringify({ sections: { ai: { apiKey: apiKey || '', model, provider } } }),
   });
   const data = await res.json();
