@@ -1,6 +1,7 @@
 import { RouterProvider, matchRoute, useRouter } from './router';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Navbar } from './components/Navbar';
+import { BreakingNewsTicker } from './components/BreakingNewsTicker';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
 import { AboutPage } from './pages/AboutPage';
@@ -73,6 +74,7 @@ function Routes() {
   return (
     <>
       <Navbar />
+      <BreakingNewsTicker />
       <main id="main-content" className="flex-1 animate-fade-in">
         <PublicRoutes />
       </main>
