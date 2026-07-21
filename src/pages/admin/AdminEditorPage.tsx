@@ -43,7 +43,7 @@ export function AdminEditorPage({ slug }: Props) {
       if (error || !data) { setError('Post not found'); setLoading(false); return; }
       const p = data as PostRow;
       setTitle(p.title); setExcerpt(p.excerpt); setBody(p.body); setCover(p.cover);
-      setYoutubeId(p.youtube_id); setYoutubeUrl(`https://www.youtube.com/watch?v=${p.youtube_id}`);
+      setYoutubeId(p.youtube_id || ''); setYoutubeUrl(p.youtube_id ? `https://www.youtube.com/watch?v=${p.youtube_id}` : '');
       setCategory(p.category); setTags(p.tags || []); setStatus(p.status as 'draft' | 'published');
       setSeoTitle(p.seo_title ?? ''); setSeoDescription(p.seo_description ?? '');
       setFaqs(Array.isArray(p.faqs) ? p.faqs : []); setAutoSlug(false); setCustomSlug(p.slug);
@@ -87,7 +87,7 @@ export function AdminEditorPage({ slug }: Props) {
     if (!excerpt.trim()) return setError('Excerpt is required');
     if (!body.trim() || body === '<br>') return setError('Content is required');
     if (!cover.trim()) return setError('Featured image is required');
-    if (!youtubeId) return setError('A valid YouTube URL is required');
+    if (youtubeUrl.trim() && !youtubeId) return setError('Please enter a valid YouTube URL or leave this field empty.');
     if (!finalSlug) return setError('Slug is required — enter a title first');
     setSaving(true);
     const payload = {
