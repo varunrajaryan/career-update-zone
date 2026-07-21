@@ -1,30 +1,58 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useRouter } from '../../router';
-import { useAuth } from '../../lib/auth';
 import { Seo } from '../../components/Seo';
-import { useAiSettings, saveAiSettings } from '../../lib/useAiSettings';
+import { useAiSettings, saveAiSettings, type AiProvider } from '../../lib/useAiSettings';
 import { ArrowLeft, Save, AlertCircle, CheckCircle2, Key, Cpu, Eye, EyeOff } from 'lucide-react';
+
+const PROVIDER_MODELS: Record<AiProvider, { value: string; label: string }[]> = {
+  openai: [
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini (fast, affordable)' },
+    { value: 'gpt-4o', label: 'GPT-4o (highest quality)' },
+    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (legacy)' },
+  ],
+  gemini: [
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (fast, affordable)' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (highest quality)' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' },
+  ],
+};
+
+const PROVIDER_KEY_HINT: Record<AiProvider, string> = {
+  openai: 'Get your key from platform.openai.com → API keys.',
+  gemini: 'Get your key from aistudio.google.com → API key.',
+};
 
 export function AdminSettingsPage() {
   const { navigate } = useRouter();
   const { settings, loading, error: loadError, refresh } = useAiSettings();
-  const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState<AiProvider>('openai');
   const [model, setModel] = useState('gpt-4o-mini');
+  const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Sync form when settings load.
-  if (settings && model === 'gpt-4o-mini' && settings.model && model !== settings.model) {
-    setModel(settings.model);
+  // Sync form when settings load / provider changes.
+  useEffect(() => {
+    if (!settings) return;
+    setProvider(settings.provider);
+    // If the stored model exists in the new provider's list, keep it; otherwise default.
+    const models = PROVIDER_MODELS[settings.provider].map((m) => m.value);
+    setModel(models.includes(settings.model) ? settings.model : PROVIDER_MODELS[settings.provider][0].value);
+  }, [settings]);
+
+  // When provider changes manually, reset model to that provider's default.
+  function handleProviderChange(next: AiProvider) {
+    setProvider(next);
+    setModel(PROVIDER_MODELS[next][0].value);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true); setSaveError(null); setSaved(false);
     try {
-      await saveAiSettings(apiKey.trim(), model.trim() || 'gpt-4o-mini');
+      await saveAiSettings(apiKey.trim(), model.trim(), provider);
       setApiKey('');
       setSaved(true);
       setShowKey(false);
@@ -35,6 +63,8 @@ export function AdminSettingsPage() {
       setSaving(false);
     }
   }
+
+  const models = PROVIDER_MODELS[provider];
 
   return (
     <>
@@ -59,8 +89,8 @@ export function AdminSettingsPage() {
                 {settings.hasApiKey ? <CheckCircle2 className="h-5 w-5" aria-hidden="true" /> : <AlertCircle className="h-5 w-5" aria-hidden="true" />}
               </span>
               <div>
-                <p className="text-sm font-semibold text-ink-950">{settings.hasApiKey ? 'AI is configured' : 'AI is not configured'}</p>
-                <p className="text-xs text-ink-500">Model: {settings.model}</p>
+                <p className="text-sm font-semibold text-ink-950">{settings.hasApiKey ? `${settings.provider === 'gemini' ? 'Google Gemini' : 'OpenAI'} is configured` : 'AI is not configured'}</p>
+                <p className="text-xs text-ink-500">Provider: {settings.provider === 'gemini' ? 'Google Gemini' : 'OpenAI'} · Model: {settings.model}</p>
               </div>
             </div>
           </div>
@@ -68,10 +98,32 @@ export function AdminSettingsPage() {
 
         <form onSubmit={handleSave} className="mt-6 space-y-5">
           <div>
-            <label htmlFor="ai-model" className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ink-800"><Cpu className="h-4 w-4 text-brand-600" aria-hidden="true" /> Model</label>
-            <input id="ai-model" type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini" className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 focus:outline-none" />
-            <p className="mt-1 text-xs text-ink-400">OpenAI-compatible model id, e.g. gpt-4o-mini, gpt-4o, gpt-3.5-turbo.</p>
+            <label htmlFor="ai-provider" className="mb-1.5 block text-sm font-semibold text-ink-800">AI Provider</label>
+            <select
+              id="ai-provider"
+              value={provider}
+              onChange={(e) => handleProviderChange(e.target.value as AiProvider)}
+              className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+            <p className="mt-1 text-xs text-ink-400">Choose which AI provider generates your articles.</p>
           </div>
+
+          <div>
+            <label htmlFor="ai-model" className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ink-800"><Cpu className="h-4 w-4 text-brand-600" aria-hidden="true" /> Model</label>
+            <select
+              id="ai-model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
+            >
+              {models.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-ink-400">{provider === 'gemini' ? 'Google Gemini model id.' : 'OpenAI model id.'}</p>
+          </div>
+
           <div>
             <label htmlFor="ai-key" className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ink-800"><Key className="h-4 w-4 text-brand-600" aria-hidden="true" /> API key</label>
             <div className="relative">
@@ -80,7 +132,7 @@ export function AdminSettingsPage() {
                 {showKey ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
-            <p className="mt-1 text-xs text-ink-400">Leave blank to keep the existing key. Stored in Supabase, read only by the edge function.</p>
+            <p className="mt-1 text-xs text-ink-400">{PROVIDER_KEY_HINT[provider]} Leave blank to keep the existing key.</p>
           </div>
 
           {saveError && <div className="flex items-center gap-2 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700"><AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />{saveError}</div>}
