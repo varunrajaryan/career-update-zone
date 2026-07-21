@@ -112,43 +112,27 @@ interface AiConfig {
 }
 
 async function loadAiConfig(supabaseAdmin: ReturnType<typeof createClient>): Promise<AiConfig> {
-  // Prefer the new site_settings.ai column; fall back to legacy ai_settings.
-  const { data: ssRow, error: ssErr } = await supabaseAdmin
+  const { data: row, error } = await supabaseAdmin
     .from("site_settings")
     .select("ai")
     .eq("id", 1)
     .maybeSingle();
-  if (!ssErr && ssRow?.ai) {
-    const ai = ssRow.ai as Record<string, unknown>;
-    const apiKey = typeof ai.apiKey === "string" ? ai.apiKey : undefined;
-    const provider: Provider = (["openai", "gemini", "claude", "openrouter"].includes(ai.provider as string)
-      ? (ai.provider as Provider) : "openai");
-    const model = typeof ai.model === "string" && ai.model ? ai.model : (provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
-    if (!apiKey) throw new Error("AI is not configured. Please add an API key in Admin Settings.");
-    return {
-      apiKey,
-      model,
-      provider,
-      temperature: typeof ai.temperature === "number" ? ai.temperature : 0.7,
-      writingStyle: typeof ai.writingStyle === "string" ? ai.writingStyle : undefined,
-      autoTags: ai.autoTags !== false,
-      autoFaqs: ai.autoFaqs !== false,
-    };
-  }
-
-  // Legacy fallback.
-  const { data, error } = await supabaseAdmin
-    .from("ai_settings")
-    .select("ai_api_key, ai_model, ai_provider")
-    .eq("id", 1)
-    .maybeSingle();
-  if (error) throw new Error("Failed to read AI settings");
-  const row = (data || {}) as { ai_api_key: string | null; ai_model: string; ai_provider: Provider } | null;
-  const apiKey = row?.ai_api_key || undefined;
-  const provider: Provider = row?.ai_provider === "gemini" ? "gemini" : "openai";
-  const model = row?.ai_model || (provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
+  if (error) throw new Error("Failed to read AI settings from site_settings.");
+  const ai = (row?.ai ?? {}) as Record<string, unknown>;
+  const apiKey = typeof ai.apiKey === "string" && ai.apiKey ? ai.apiKey : undefined;
+  const provider: Provider = (["openai", "gemini", "claude", "openrouter"].includes(ai.provider as string)
+    ? (ai.provider as Provider) : "openai");
+  const model = typeof ai.model === "string" && ai.model ? ai.model : (provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
   if (!apiKey) throw new Error("AI is not configured. Please add an API key in Admin Settings.");
-  return { apiKey, model, provider, temperature: 0.7, autoTags: true, autoFaqs: true };
+  return {
+    apiKey,
+    model,
+    provider,
+    temperature: typeof ai.temperature === "number" ? ai.temperature : 0.7,
+    writingStyle: typeof ai.writingStyle === "string" ? ai.writingStyle : undefined,
+    autoTags: ai.autoTags !== false,
+    autoFaqs: ai.autoFaqs !== false,
+  };
 }
 
 function buildSystemPrompt(cfg: AiConfig): string {
