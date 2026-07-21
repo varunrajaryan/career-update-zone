@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const ADMIN_EMAIL = "varunrajaryan@gmail.com";
 
-type Provider = "openai" | "gemini";
+type Provider = "openai" | "gemini" | "claude" | "openrouter";
 
 interface GenerateBody {
   sourceUrl: string;
@@ -37,7 +37,6 @@ function jsonResponse(status: number, data: object) {
   });
 }
 
-// Strip HTML to readable plain text, preserving sentence/paragraph structure.
 function htmlToText(html: string): string {
   let s = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -95,49 +94,81 @@ Return ONLY valid JSON with exactly these fields:
   "title": string,
   "slug": string,
   "excerpt": string,
-  "body": string,            // HTML content
+  "body": string,
   "seoTitle": string,
   "seoDescription": string,
   "tags": string[],
   "faqs": [{ "q": string, "a": string }]
 }`;
 
-interface AiSettingsRow {
-  ai_api_key: string | null;
-  ai_model: string;
-  ai_provider: Provider;
+interface AiConfig {
+  apiKey: string;
+  model: string;
+  provider: Provider;
+  temperature?: number;
+  writingStyle?: string;
+  autoTags?: boolean;
+  autoFaqs?: boolean;
 }
 
-async function loadAiSettings(supabaseAdmin: ReturnType<typeof createClient>): Promise<{ apiKey: string; model: string; provider: Provider }> {
+async function loadAiConfig(supabaseAdmin: ReturnType<typeof createClient>): Promise<AiConfig> {
+  // Prefer the new site_settings.ai column; fall back to legacy ai_settings.
+  const { data: ssRow, error: ssErr } = await supabaseAdmin
+    .from("site_settings")
+    .select("ai")
+    .eq("id", 1)
+    .maybeSingle();
+  if (!ssErr && ssRow?.ai) {
+    const ai = ssRow.ai as Record<string, unknown>;
+    const apiKey = typeof ai.apiKey === "string" ? ai.apiKey : undefined;
+    const provider: Provider = (["openai", "gemini", "claude", "openrouter"].includes(ai.provider as string)
+      ? (ai.provider as Provider) : "openai");
+    const model = typeof ai.model === "string" && ai.model ? ai.model : (provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
+    if (!apiKey) throw new Error("AI is not configured. Please add an API key in Admin Settings.");
+    return {
+      apiKey,
+      model,
+      provider,
+      temperature: typeof ai.temperature === "number" ? ai.temperature : 0.7,
+      writingStyle: typeof ai.writingStyle === "string" ? ai.writingStyle : undefined,
+      autoTags: ai.autoTags !== false,
+      autoFaqs: ai.autoFaqs !== false,
+    };
+  }
+
+  // Legacy fallback.
   const { data, error } = await supabaseAdmin
     .from("ai_settings")
     .select("ai_api_key, ai_model, ai_provider")
     .eq("id", 1)
     .maybeSingle();
   if (error) throw new Error("Failed to read AI settings");
-  const row = (data || {}) as AiSettingsRow | null;
+  const row = (data || {}) as { ai_api_key: string | null; ai_model: string; ai_provider: Provider } | null;
   const apiKey = row?.ai_api_key || undefined;
   const provider: Provider = row?.ai_provider === "gemini" ? "gemini" : "openai";
   const model = row?.ai_model || (provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
   if (!apiKey) throw new Error("AI is not configured. Please add an API key in Admin Settings.");
-  return { apiKey, model, provider };
+  return { apiKey, model, provider, temperature: 0.7, autoTags: true, autoFaqs: true };
 }
 
-// Call OpenAI Chat Completions and return the content string.
-async function callOpenAi(apiKey: string, model: string, systemPrompt: string, userPrompt: string): Promise<string> {
+function buildSystemPrompt(cfg: AiConfig): string {
+  let prompt = SYSTEM_PROMPT;
+  if (cfg.writingStyle) prompt += `\n\nWriting style: ${cfg.writingStyle}`;
+  if (cfg.autoTags === false) prompt += "\n\nDo NOT include tags (return an empty tags array).";
+  if (cfg.autoFaqs === false) prompt += "\n\nDo NOT include FAQs (return an empty faqs array).";
+  return prompt;
+}
+
+// --- Provider call functions ---------------------------------------------
+
+async function callOpenAi(apiKey: string, model: string, systemPrompt: string, userPrompt: string, temperature: number): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      temperature,
       response_format: { type: "json_object" },
     }),
   });
@@ -151,21 +182,15 @@ async function callOpenAi(apiKey: string, model: string, systemPrompt: string, u
   return content;
 }
 
-// Call Google Gemini generateContent and return the text content string.
-async function callGemini(apiKey: string, model: string, systemPrompt: string, userPrompt: string): Promise<string> {
+async function callGemini(apiKey: string, model: string, systemPrompt: string, userPrompt: string, temperature: number): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [
-        { role: "user", parts: [{ text: userPrompt }] },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
-      },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { temperature, responseMimeType: "application/json" },
     }),
   });
   if (!res.ok) {
@@ -174,6 +199,55 @@ async function callGemini(apiKey: string, model: string, systemPrompt: string, u
   }
   const data = await res.json();
   const content: string | undefined = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).filter(Boolean).join("\n");
+  if (!content) throw new Error("AI returned an empty response.");
+  return content;
+}
+
+// Claude (Anthropic) — Messages API.
+async function callClaude(apiKey: string, model: string, systemPrompt: string, userPrompt: string, temperature: number): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      temperature,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`AI provider error (${res.status}): ${errText.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const content: string | undefined = data?.content?.[0]?.text;
+  if (!content) throw new Error("AI returned an empty response.");
+  return content;
+}
+
+// OpenRouter — OpenAI-compatible chat completions.
+async function callOpenRouter(apiKey: string, model: string, systemPrompt: string, userPrompt: string, temperature: number): Promise<string> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      temperature,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`AI provider error (${res.status}): ${errText.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const content: string | undefined = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("AI returned an empty response.");
   return content;
 }
@@ -189,23 +263,15 @@ function parseArticle(content: string): ArticlePayload {
   }
   const required: (keyof ArticlePayload)[] = ["title", "slug", "excerpt", "body", "seoTitle", "seoDescription", "tags", "faqs"];
   for (const k of required) {
-    if (article[k] === undefined || article[k] === null) {
-      throw new Error(`AI response missing field: ${k}`);
-    }
+    if (article[k] === undefined || article[k] === null) throw new Error(`AI response missing field: ${k}`);
   }
-  if (!Array.isArray(article.tags) || !Array.isArray(article.faqs)) {
-    throw new Error("AI response has invalid tags or faqs.");
-  }
+  if (!Array.isArray(article.tags) || !Array.isArray(article.faqs)) throw new Error("AI response has invalid tags or faqs.");
   return article;
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
-  if (req.method !== "POST") {
-    return jsonResponse(405, { error: "Method not allowed" });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
+  if (req.method !== "POST") return jsonResponse(405, { error: "Method not allowed" });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -216,51 +282,30 @@ Deno.serve(async (req: Request) => {
     const token = authHeader.replace("Bearer ", "");
     if (!token) return jsonResponse(401, { error: "Missing auth token" });
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return jsonResponse(401, { error: "Invalid or expired session" });
-    }
-    if (userData.user.email !== ADMIN_EMAIL) {
-      return jsonResponse(403, { error: "Not authorized" });
-    }
+    if (userErr || !userData?.user) return jsonResponse(401, { error: "Invalid or expired session" });
+    if (userData.user.email !== ADMIN_EMAIL) return jsonResponse(403, { error: "Not authorized" });
 
-    let ai: { apiKey: string; model: string; provider: Provider };
-    try {
-      ai = await loadAiSettings(supabaseAdmin);
-    } catch (err) {
-      return jsonResponse(400, { error: (err as Error).message });
-    }
+    let cfg: AiConfig;
+    try { cfg = await loadAiConfig(supabaseAdmin); }
+    catch (err) { return jsonResponse(400, { error: (err as Error).message }); }
 
     let body: GenerateBody;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonResponse(400, { error: "Invalid JSON body" });
-    }
+    try { body = await req.json(); }
+    catch { return jsonResponse(400, { error: "Invalid JSON body" }); }
     const { sourceUrl, category, categoryName, cover, youtubeId } = body;
-    if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) {
-      return jsonResponse(400, { error: "A valid source URL is required." });
-    }
+    if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) return jsonResponse(400, { error: "A valid source URL is required." });
 
     const fetchRes = await fetch(sourceUrl, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; CareerUpdateZoneBot/1.0; +https://careerupdatezone.com)",
+        "User-Agent": "Mozilla/5.0 (compatible; CareerUpdateZoneBot/1.0; +https://careerupdatezone.com)",
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",
     });
-    if (!fetchRes.ok) {
-      return jsonResponse(502, {
-        error: `Could not fetch source page (HTTP ${fetchRes.status}).`,
-      });
-    }
+    if (!fetchRes.ok) return jsonResponse(502, { error: `Could not fetch source page (HTTP ${fetchRes.status}).` });
     const html = await fetchRes.text();
     const sourceText = extractMainText(html);
-    if (sourceText.replace(/\s/g, "").length < 120) {
-      return jsonResponse(422, {
-        error: "Could not extract enough readable content from that URL.",
-      });
-    }
+    if (sourceText.replace(/\s/g, "").length < 120) return jsonResponse(422, { error: "Could not extract enough readable content from that URL." });
 
     const userPrompt = `Target category: ${categoryName || category}
 Source text (extracted, may be noisy):
@@ -270,30 +315,34 @@ ${sourceText}
 
 Write a new original Career Update Zone article for the "${categoryName || category}" category based on the topic of the source. Return only the JSON object.`;
 
+    const systemPrompt = buildSystemPrompt(cfg);
+    const temp = cfg.temperature ?? 0.7;
+
     let content: string;
     try {
-      content = ai.provider === "gemini"
-        ? await callGemini(ai.apiKey, ai.model, SYSTEM_PROMPT, userPrompt)
-        : await callOpenAi(ai.apiKey, ai.model, SYSTEM_PROMPT, userPrompt);
+      switch (cfg.provider) {
+        case "gemini":
+          content = await callGemini(cfg.apiKey, cfg.model, systemPrompt, userPrompt, temp);
+          break;
+        case "claude":
+          content = await callClaude(cfg.apiKey, cfg.model, systemPrompt, userPrompt, temp);
+          break;
+        case "openrouter":
+          content = await callOpenRouter(cfg.apiKey, cfg.model, systemPrompt, userPrompt, temp);
+          break;
+        default:
+          content = await callOpenAi(cfg.apiKey, cfg.model, systemPrompt, userPrompt, temp);
+      }
     } catch (err) {
       return jsonResponse(502, { error: (err as Error).message });
     }
 
     let article: ArticlePayload;
-    try {
-      article = parseArticle(content);
-    } catch (err) {
-      return jsonResponse(502, { error: (err as Error).message });
-    }
+    try { article = parseArticle(content); }
+    catch (err) { return jsonResponse(502, { error: (err as Error).message }); }
 
-    return jsonResponse(200, {
-      article,
-      cover: cover || null,
-      youtubeId: youtubeId || null,
-    });
+    return jsonResponse(200, { article, cover: cover || null, youtubeId: youtubeId || null });
   } catch (err) {
-    return jsonResponse(500, {
-      error: `Unexpected error: ${(err as Error).message || err}`,
-    });
+    return jsonResponse(500, { error: `Unexpected error: ${(err as Error).message || err}` });
   }
 });

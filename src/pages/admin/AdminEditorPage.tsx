@@ -8,7 +8,7 @@ import { YouTubeEmbed } from '../../components/YouTubeEmbed';
 import { categories } from '../../content/categories';
 import { slugify, extractYouTubeId, estimateReadTime } from '../../lib/editor-utils';
 import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2, Wand2, Link2, Loader2, FileText, Sparkles, Image as ImageIcon } from 'lucide-react';
-import { useAiSettings } from '../../lib/useAiSettings';
+import { useAiSettings } from '../../lib/useSiteSettings';
 
 type Props = { slug?: string };
 type Faq = { q: string; a: string };
