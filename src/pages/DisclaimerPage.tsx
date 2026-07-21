@@ -1,4 +1,4 @@
-import { Seo, SITE } from '../components/Seo';
+import { Seo, SITE_URL } from '../components/Seo';
 import { Link } from '../router';
 import { channel } from '../content/channel';
 
@@ -7,8 +7,8 @@ export function DisclaimerPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.url },
-      { '@type': 'ListItem', position: 2, name: 'Disclaimer', item: `${SITE.url}/disclaimer` },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Disclaimer', item: `${SITE_URL}/disclaimer` },
     ],
   };
 
@@ -18,7 +18,7 @@ export function DisclaimerPage() {
         title="Disclaimer"
         description="Read the Disclaimer of Career Update Zone — important information about the accuracy and use of our content."
         canonical="/disclaimer"
-        jsonLd={jsonLd}
+        schema={jsonLd}
       />
       <section className="border-b border-ink-100 bg-white">
         <div className="container-content py-14">
@@ -35,7 +35,7 @@ export function DisclaimerPage() {
       <section className="container-content py-12">
         <article className="prose-content max-w-3xl">
           <p>
-            The information provided by {channel.name} on {SITE.url} and our YouTube channel is for general informational
+            The information provided by {channel.name} on {SITE_URL} and our YouTube channel is for general informational
             purposes only. All information is provided in good faith, however we make no representation or warranty of any
             kind regarding the accuracy, adequacy, validity, reliability, or completeness of any information on this site.
           </p>

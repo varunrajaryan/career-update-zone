@@ -9,3 +9,7 @@ export const categories: Category[] = [
   { slug: 'scholarship', name: 'Scholarships', description: 'Scholarship and fellowship opportunities', icon: 'award' },
   { slug: 'career-tips', name: 'Career Tips', description: 'Career guidance and interview preparation', icon: 'lightbulb' },
 ];
+
+export function getCategory(slug: string): Category | undefined {
+  return categories.find((c) => c.slug === slug);
+}

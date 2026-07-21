@@ -1,4 +1,4 @@
-import type { FaqItem } from '../components/FaqAccordion';
+import type { FaqItem } from '../lib/supabase';
 
 export type BlogPost = {
   slug: string;

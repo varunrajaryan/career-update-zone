@@ -1,4 +1,4 @@
-import { Seo, SITE } from '../components/Seo';
+import { Seo, SITE_URL } from '../components/Seo';
 import { Link } from '../router';
 import { channel } from '../content/channel';
 
@@ -7,8 +7,8 @@ export function PrivacyPolicyPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.url },
-      { '@type': 'ListItem', position: 2, name: 'Privacy Policy', item: `${SITE.url}/privacy-policy` },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Privacy Policy', item: `${SITE_URL}/privacy-policy` },
     ],
   };
 
@@ -18,7 +18,7 @@ export function PrivacyPolicyPage() {
         title="Privacy Policy"
         description="Read the Privacy Policy of Career Update Zone — how we collect, use, and protect your information."
         canonical="/privacy-policy"
-        jsonLd={jsonLd}
+        schema={jsonLd}
       />
       <section className="border-b border-ink-100 bg-white">
         <div className="container-content py-14">
@@ -35,7 +35,7 @@ export function PrivacyPolicyPage() {
       <section className="container-content py-12">
         <article className="prose-content max-w-3xl">
           <p>
-            At {channel.name}, accessible from {SITE.url}, we are committed to protecting your privacy. This Privacy Policy
+            At {channel.name}, accessible from {SITE_URL}, we are committed to protecting your privacy. This Privacy Policy
             explains what information we collect, how we use it, and the choices you have.
           </p>
 

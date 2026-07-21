@@ -1,4 +1,4 @@
-import { Seo, SITE } from '../components/Seo';
+import { Seo, SITE_URL } from '../components/Seo';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { channel } from '../content/channel';
 
@@ -7,8 +7,8 @@ export function TermsPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.url },
-      { '@type': 'ListItem', position: 2, name: 'Terms & Conditions', item: `${SITE.url}/terms` },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Terms & Conditions', item: `${SITE_URL}/terms` },
     ],
   };
 
@@ -18,7 +18,7 @@ export function TermsPage() {
         title="Terms & Conditions"
         description="Read the Terms & Conditions of Career Update Zone — the rules and terms for using our website and services."
         canonical="/terms"
-        jsonLd={jsonLd}
+        schema={jsonLd}
       />
       <section className="border-b border-ink-100 bg-white">
         <div className="container-content py-14">

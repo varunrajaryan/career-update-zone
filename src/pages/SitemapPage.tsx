@@ -8,7 +8,7 @@ export function SitemapPage() {
 
   useEffect(() => {
     (async () => {
-      const staticUrls = [
+      const staticUrls: { loc: string; priority: string; changefreq: string; lastmod?: string }[] = [
         { loc: '/', priority: '1.0', changefreq: 'daily' },
         { loc: '/latest-jobs', priority: '0.9', changefreq: 'daily' },
         { loc: '/blog', priority: '0.9', changefreq: 'daily' },
