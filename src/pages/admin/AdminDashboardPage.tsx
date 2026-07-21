@@ -6,7 +6,7 @@ import { Seo } from '../../components/Seo';
 import { categories } from '../../content/categories';
 import { Icon } from '../../components/Icon';
 import { formatDate } from '../../lib/editor-utils';
-import { FileText, Plus, LogOut, Eye, Edit3, Trash2, Search, Clock, CheckCircle2, Home } from 'lucide-react';
+import { FileText, Plus, LogOut, Eye, Edit3, Trash2, Search, Clock, CheckCircle2, Home, Settings } from 'lucide-react';
 
 export function AdminDashboardPage() {
   const { session, signOut } = useAuth();
@@ -63,6 +63,7 @@ export function AdminDashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"><Home className="h-3.5 w-3.5" aria-hidden="true" /><span className="hidden sm:inline">View Website</span></Link>
+            <Link to="/admin/settings" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"><Settings className="h-3.5 w-3.5" aria-hidden="true" /><span className="hidden sm:inline">Settings</span></Link>
             <button onClick={handleSignOut} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-600"><LogOut className="h-3.5 w-3.5" aria-hidden="true" /><span className="hidden sm:inline">Logout</span></button>
           </div>
         </div>

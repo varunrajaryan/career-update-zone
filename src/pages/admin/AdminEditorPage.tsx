@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useRouter } from '../../router';
 import { supabase, type PostRow } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
 import { Seo } from '../../components/Seo';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { YouTubeEmbed } from '../../components/YouTubeEmbed';
 import { categories } from '../../content/categories';
 import { slugify, extractYouTubeId, estimateReadTime } from '../../lib/editor-utils';
-import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2, Wand2, Link2, Loader2, FileText, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { useAiSettings } from '../../lib/useAiSettings';
 
 type Props = { slug?: string };
 type Faq = { q: string; a: string };
@@ -35,6 +37,18 @@ export function AdminEditorPage({ slug }: Props) {
   const [success, setSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const finalSlug = autoSlug ? slugify(title) : slugify(customSlug);
+
+  // AI Generator state
+  const [activeTab, setActiveTab] = useState<'manual' | 'ai'>('manual');
+  const { settings: aiSettings, loading: aiSettingsLoading } = useAiSettings();
+  const [aiSourceUrl, setAiSourceUrl] = useState('');
+  const [aiCategory, setAiCategory] = useState(categories[0].slug);
+  const [aiCover, setAiCover] = useState('');
+  const [aiYoutubeUrl, setAiYoutubeUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateSuccess, setGenerateSuccess] = useState(false);
+  const aiConfigured = !!aiSettings && aiSettings.hasApiKey;
 
   useEffect(() => {
     if (!isEdit) return;
@@ -80,6 +94,65 @@ export function AdminEditorPage({ slug }: Props) {
   function addFaq() { setFaqs([...faqs, { q: '', a: '' }]); }
   function updateFaq(i: number, field: 'q' | 'a', val: string) { setFaqs(faqs.map((f, idx) => (idx === i ? { ...f, [field]: val } : f))); }
   function removeFaq(i: number) { setFaqs(faqs.filter((_, idx) => idx !== i)); }
+
+  async function handleGenerate() {
+    setGenerateError(null);
+    setGenerateSuccess(false);
+    if (!aiSourceUrl.trim() || !/^https?:\/\//i.test(aiSourceUrl.trim())) {
+      setGenerateError('Please enter a valid source URL.');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-generate`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          sourceUrl: aiSourceUrl.trim(),
+          category: aiCategory,
+          categoryName: categories.find((c) => c.slug === aiCategory)?.name || aiCategory,
+          cover: aiCover.trim() || null,
+          youtubeId: extractYouTubeId(aiYoutubeUrl) || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGenerateError(data?.error || `Generation failed (HTTP ${res.status}).`);
+        return;
+      }
+      const a = data?.article;
+      if (!a || !a.title || !a.body) {
+        setGenerateError('AI returned an incomplete article. Try again.');
+        return;
+      }
+      // Populate the existing editor fields for review/edit.
+      setTitle(a.title);
+      setAutoSlug(false);
+      setCustomSlug(a.slug || slugify(a.title));
+      setExcerpt(a.excerpt || '');
+      setBody(a.body);
+      setSeoTitle(a.seoTitle || '');
+      setSeoDescription(a.seoDescription || '');
+      setTags(Array.isArray(a.tags) ? a.tags.slice(0, 10) : []);
+      setFaqs(Array.isArray(a.faqs) ? a.faqs.filter((f: { q?: string; a?: string }) => f.q && f.a).slice(0, 6) : []);
+      setCategory(aiCategory);
+      if (aiCover.trim()) setCover(aiCover.trim());
+      if (aiYoutubeUrl.trim()) {
+        const yid = extractYouTubeId(aiYoutubeUrl);
+        if (yid) { setYoutubeId(yid); setYoutubeUrl(aiYoutubeUrl.trim()); }
+      }
+      setGenerateSuccess(true);
+      setActiveTab('manual');
+    } catch (err) {
+      setGenerateError((err as Error).message || 'Network error while generating.');
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function handleSave(newStatus?: 'draft' | 'published') {
     setError(null); setSuccess(false);
@@ -138,6 +211,74 @@ export function AdminEditorPage({ slug }: Props) {
         </div>
       </div>
       <div className="container-content py-8">
+        {/* Editor tabs */}
+        <div role="tablist" aria-label="Editor mode" className="mb-6 flex gap-2 rounded-2xl border border-ink-200 bg-white p-1.5">
+          <button role="tab" aria-selected={activeTab === 'manual'} onClick={() => setActiveTab('manual')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === 'manual' ? 'bg-brand-600 text-white shadow-sm' : 'text-ink-600 hover:bg-ink-100'}`}><FileText className="h-4 w-4" aria-hidden="true" /> Manual Editor</button>
+          <button role="tab" aria-selected={activeTab === 'ai'} onClick={() => setActiveTab('ai')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${activeTab === 'ai' ? 'bg-brand-600 text-white shadow-sm' : 'text-ink-600 hover:bg-ink-100'}`}><Wand2 className="h-4 w-4" aria-hidden="true" /> AI Generator</button>
+        </div>
+
+        {/* AI Generator panel */}
+        {activeTab === 'ai' && (
+          <div className="mb-8">
+            {aiSettingsLoading ? (
+              <div className="card flex items-center gap-3 p-6 text-sm text-ink-500"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Checking AI configuration…</div>
+            ) : !aiConfigured ? (
+              <div className="card border-warning-200 bg-warning-50/50 p-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold text-warning-800">AI is not configured. Please add an API key in Admin Settings.</p>
+                    <Link to="/admin/settings" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800"><Link2 className="h-4 w-4" aria-hidden="true" /> Open Admin Settings</Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="card p-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-brand-600" aria-hidden="true" />
+                  <h2 className="font-display text-lg font-bold text-ink-950">Generate an article from a source</h2>
+                </div>
+                <p className="mt-1.5 text-sm text-ink-500">Paste a source URL and pick a category. The AI rewrites the topic in the Career Update Zone style — original, SEO-friendly, never copied. Review and edit the result before publishing.</p>
+                <div className="mt-5 grid gap-4">
+                  <div>
+                    <label htmlFor="ai-source-url" className="mb-1.5 block text-sm font-semibold text-ink-800">Source URL</label>
+                    <input id="ai-source-url" type="url" value={aiSourceUrl} onChange={(e) => setAiSourceUrl(e.target.value)} placeholder="https://example.com/article-to-reference" className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-400/30 focus:outline-none" />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="ai-category" className="mb-1.5 block text-sm font-semibold text-ink-800">Category</label>
+                      <select id="ai-category" value={aiCategory} onChange={(e) => setAiCategory(e.target.value)} className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none">
+                        {categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="ai-youtube" className="mb-1.5 block text-sm font-semibold text-ink-800">YouTube URL <span className="font-normal text-ink-400">(optional)</span></label>
+                      <input id="ai-youtube" type="url" value={aiYoutubeUrl} onChange={(e) => setAiYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="ai-cover" className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ink-800"><ImageIcon className="h-4 w-4 text-brand-600" aria-hidden="true" /> Featured image <span className="font-normal text-ink-400">(optional)</span></label>
+                    <input id="ai-cover" type="url" value={aiCover} onChange={(e) => setAiCover(e.target.value)} placeholder="Paste an image URL…" className="w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none" />
+                    {aiCover && <img src={aiCover} alt="" className="mt-2 aspect-[16/10] w-full max-w-xs rounded-xl object-cover" />}
+                  </div>
+                </div>
+
+                {generateError && <div className="mt-4 flex items-start gap-2 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{generateError}</span></div>}
+                {generateSuccess && <div className="mt-4 flex items-start gap-2 rounded-xl bg-success-50 px-4 py-3 text-sm text-success-700"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>Article generated and loaded into the editor. Review and publish when ready.</span></div>}
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={handleGenerate} disabled={generating} className="btn-primary disabled:opacity-50">
+                    {generating ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Generating…</> : <><Wand2 className="h-4 w-4" aria-hidden="true" /> Generate Article</>}
+                  </button>
+                  <p className="text-xs text-ink-400">This calls the AI model via a secure edge function. Generation may take 10-30 seconds.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Manual editor (always rendered; hidden when AI tab is active) */}
+        <div className={activeTab === 'ai' ? 'hidden' : ''}>
         {error && <div className="mb-6 flex items-center gap-2 rounded-xl bg-error-50 px-4 py-3 text-sm text-error-700 sm:hidden" role="alert"><AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />{error}</div>}
         {success && <div className="mb-6 flex items-center gap-2 rounded-xl bg-success-50 px-4 py-3 text-sm text-success-700 sm:hidden"><CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />Post saved successfully.</div>}
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -233,6 +374,7 @@ export function AdminEditorPage({ slug }: Props) {
             </div>
             {isEdit && <div className="card border-error-200 p-5"><h3 className="text-sm font-semibold text-error-700">Danger zone</h3><button type="button" onClick={handleDelete} className="mt-3 w-full rounded-xl border border-error-200 bg-error-50 px-4 py-2.5 text-sm font-medium text-error-700 transition hover:bg-error-100"><Trash2 className="mr-1.5 inline h-4 w-4" aria-hidden="true" /> Delete post permanently</button></div>}
           </aside>
+        </div>
         </div>
       </div>
     </>

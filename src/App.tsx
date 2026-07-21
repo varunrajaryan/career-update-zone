@@ -16,6 +16,7 @@ import { SitemapPage } from './pages/SitemapPage';
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminEditorPage } from './pages/admin/AdminEditorPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { Loader2 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'varunrajaryan@gmail.com';
@@ -61,6 +62,7 @@ function AdminRoutes() {
     );
   }
   if (path === '/admin') return <AdminDashboardPage />;
+  if (path === '/admin/settings') return <AdminSettingsPage />;
   const editMatch = matchRoute('/admin/edit/:slug', path);
   if (editMatch) return <AdminEditorPage slug={editMatch.slug} />;
   if (path === '/admin/new') return <AdminEditorPage />;
