@@ -32,25 +32,25 @@ export function Navbar() {
         scrolled ? 'border-slate-200 shadow-sm' : 'border-transparent'
       }`}
     >
-      <nav className="container-content flex h-14 items-center justify-between" aria-label="Main navigation">
+      <nav className="container-content flex h-16 items-center justify-between" aria-label="Main navigation">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Career Update Zone home">
           <img
             src="/logo1 copy copy.png"
             alt="Career Update Zone"
-            className="h-9 w-9 rounded-full object-cover ring-1 ring-slate-200 transition md:h-11 md:w-11"
+            className="h-[42px] w-[42px] rounded-full object-cover ring-1 ring-slate-200 transition md:h-[52px] md:w-[52px]"
           />
           <span className="font-display text-base font-bold text-slate-900 md:text-lg">{channel.name}</span>
         </Link>
 
-        <div className="hidden items-center gap-0.5 lg:flex">
+        <div className="hidden items-center gap-1 lg:flex">
           {links.map((l) => (
             <Link
               key={l.to}
               to={l.to}
-              className={`relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200 ${
+              className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-200 ${
                 path === l.to
                   ? 'text-brand-700'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {l.label}
@@ -63,7 +63,7 @@ export function Navbar() {
           ))}
           <Link
             to="/admin"
-            className="ml-1 grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="ml-1.5 grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             title="Admin"
             aria-label="Admin panel"
           >

@@ -10,7 +10,7 @@ export function BlogCard({ post }: { post: PostRow }) {
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-slate-200/60"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-slate-300/50"
       aria-label={post.title}
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
@@ -22,6 +22,7 @@ export function BlogCard({ post }: { post: PostRow }) {
           height={400}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" aria-hidden="true" />
         {cat && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur">
             <Icon name={cat.icon} className="h-3 w-3" aria-hidden="true" />
