@@ -5,7 +5,15 @@ type RouterContextValue = { route: Route; navigate: (to: string, opts?: { replac
 const RouterContext = createContext<RouterContextValue | null>(null);
 
 export function RouterProvider({ children }: { children: ReactNode }) {
-  const [path, setPath] = useState(() => window.location.pathname + window.location.search || '/');
+  const [path, setPath] = useState(() => {
+    const hash = window.location.hash;
+    if (hash && hash.charAt(1) === '/') {
+      const clean = hash.slice(1);
+      window.history.replaceState(null, '', clean);
+      return clean;
+    }
+    return window.location.pathname + window.location.search || '/';
+  });
 
   useEffect(() => {
     const onPop = () => {

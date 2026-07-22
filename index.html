@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    // Redirect old hash-based URLs (#/path) to clean URLs (/path).
+    // Runs before React loads to avoid a flash of wrong content.
+    (function () {
+      var hash = window.location.hash;
+      if (hash && hash.charAt(1) === '/') {
+        var clean = hash.slice(1); // remove the '#'
+        // Preserve any existing search params (rare, but possible)
+        if (window.location.search && clean.indexOf('?') === -1) {
+          clean += window.location.search;
+        }
+        window.history.replaceState(null, '', clean);
+      }
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#020617" />
