@@ -5,17 +5,27 @@ type RouterContextValue = { route: Route; navigate: (to: string, opts?: { replac
 const RouterContext = createContext<RouterContextValue | null>(null);
 
 export function RouterProvider({ children }: { children: ReactNode }) {
-  const [path, setPath] = useState(() => window.location.hash.slice(1) || '/');
+  const [path, setPath] = useState(() => window.location.pathname + window.location.search || '/');
+
   useEffect(() => {
-    const onHash = () => { setPath(window.location.hash.slice(1) || '/'); window.scrollTo(0, 0); };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    const onPop = () => {
+      setPath(window.location.pathname + window.location.search || '/');
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
+
   const navigate = useCallback((to: string, opts?: { replace?: boolean }) => {
-    const target = '#' + to;
-    if (opts?.replace) window.location.replace(target);
-    else window.location.hash = to;
+    if (opts?.replace) {
+      window.history.replaceState(null, '', to);
+    } else {
+      window.history.pushState(null, '', to);
+    }
+    setPath(to);
+    window.scrollTo(0, 0);
   }, []);
+
   return <RouterContext.Provider value={{ route: { path }, navigate }}>{children}</RouterContext.Provider>;
 }
 
@@ -25,8 +35,15 @@ export function useRouter() {
   return ctx;
 }
 
-export function Link({ to, children, className, ...rest }: { to: string; children: ReactNode; className?: string } & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
-  return <a href={'#' + to} className={className} {...rest}>{children}</a>;
+export function Link({ to, children, className, onClick, ...rest }: { to: string; children: ReactNode; className?: string } & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  const { navigate } = useRouter();
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(to);
+    onClick?.(e);
+  };
+  return <a href={to} className={className} onClick={handleClick} {...rest}>{children}</a>;
 }
 
 export function matchRoute(pattern: string, path: string): Record<string, string> | null {
