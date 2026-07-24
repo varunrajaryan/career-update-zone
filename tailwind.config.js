@@ -91,25 +91,8 @@ export default {
         soft: '0 1px 2px rgba(11,13,18,0.04), 0 8px 24px -12px rgba(11,13,18,0.12)',
         lift: '0 2px 4px rgba(11,13,18,0.06), 0 24px 48px -16px rgba(11,13,18,0.18)',
       },
-      keyframes: {
-        'fade-up': {
-          '0%': { opacity: '0', transform: 'translateY(12px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        marquee: {
-          '0%': { transform: 'translateX(0)' },
-          '100%': { transform: 'translateX(-50%)' },
-        },
-      },
-      animation: {
-        'fade-up': 'fade-up 0.5s ease-out both',
-        'fade-in': 'fade-in 0.4s ease-out both',
-        marquee: 'marquee 28s linear infinite',
-      },
+      keyframes: {},
+      animation: {},
     },
   },
   plugins: [],

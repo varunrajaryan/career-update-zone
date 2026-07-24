@@ -112,7 +112,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
                 <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" aria-hidden="true" /> {post.read_time} min read</span>
               </div>
               <div className="mt-6 overflow-hidden rounded-2xl">
-                <img src={post.cover} alt={post.title} className="h-auto max-h-[80vh] w-full object-contain" loading="eager" />
+                <img src={post.cover} alt={post.title} width={1200} height={630} fetchPriority="high" decoding="async" className="h-auto max-h-[80vh] w-full object-contain" loading="eager" />
               </div>
               <div className="prose-content mt-8" dangerouslySetInnerHTML={{ __html: processedBody }} />
               <ImportantLinks links={post.important_links || []} />

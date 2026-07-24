@@ -1,23 +1,25 @@
+import { lazy, Suspense } from 'react';
 import { RouterProvider, matchRoute, useRouter } from './router';
 import { AuthProvider, useAuth } from './lib/auth';
 import { Navbar } from './components/Navbar';
 import { BreakingNewsTicker } from './components/BreakingNewsTicker';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
-import { AboutPage } from './pages/AboutPage';
-import { BlogPage } from './pages/BlogPage';
-import { BlogPostPage } from './pages/BlogPostPage';
-import { VideosPage } from './pages/VideosPage';
-import { ContactPage } from './pages/ContactPage';
-import { CategoriesPage } from './pages/CategoriesPage';
-import { LatestJobsPage } from './pages/LatestJobsPage';
-import { PrivacyPolicyPage, DisclaimerPage, TermsPage, NotFoundPage } from './pages/StaticPages';
-import { SitemapPage } from './pages/SitemapPage';
-import { AdminLoginPage } from './pages/admin/AdminLoginPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AdminEditorPage } from './pages/admin/AdminEditorPage';
-import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { Loader2 } from 'lucide-react';
+
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const BlogPage = lazy(() => import('./pages/BlogPage').then((m) => ({ default: m.BlogPage })));
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage').then((m) => ({ default: m.BlogPostPage })));
+const VideosPage = lazy(() => import('./pages/VideosPage').then((m) => ({ default: m.VideosPage })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage })));
+const LatestJobsPage = lazy(() => import('./pages/LatestJobsPage').then((m) => ({ default: m.LatestJobsPage })));
+const StaticPages = lazy(() => import('./pages/StaticPages').then((m) => ({ default: m.StaticPages })));
+const SitemapPage = lazy(() => import('./pages/SitemapPage').then((m) => ({ default: m.SitemapPage })));
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const AdminEditorPage = lazy(() => import('./pages/admin/AdminEditorPage').then((m) => ({ default: m.AdminEditorPage })));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
 
 const ADMIN_EMAIL = 'varunrajaryan@gmail.com';
 
@@ -31,13 +33,13 @@ function PublicRoutes() {
   if (path === '/contact') return <ContactPage />;
   if (path === '/categories') return <CategoriesPage />;
   if (path === '/latest-jobs') return <LatestJobsPage />;
-  if (path === '/privacy-policy') return <PrivacyPolicyPage />;
-  if (path === '/disclaimer') return <DisclaimerPage />;
-  if (path === '/terms') return <TermsPage />;
+  if (path === '/privacy-policy') return <StaticPages page="privacy" />;
+  if (path === '/disclaimer') return <StaticPages page="disclaimer" />;
+  if (path === '/terms') return <StaticPages page="terms" />;
   if (path === '/sitemap.xml') return <SitemapPage />;
   const post = matchRoute('/blog/:slug', path);
   if (post) return <BlogPostPage slug={post.slug} />;
-  return <NotFoundPage />;
+  return <StaticPages page="notfound" />;
 }
 
 function AdminRoutes() {
@@ -66,19 +68,27 @@ function AdminRoutes() {
   const editMatch = matchRoute('/admin/edit/:slug', path);
   if (editMatch) return <AdminEditorPage slug={editMatch.slug} />;
   if (path === '/admin/new') return <AdminEditorPage />;
-  return <NotFoundPage />;
+  return <StaticPages page="notfound" />;
 }
 
 function Routes() {
   const { route } = useRouter();
   const path = route.path.split('?')[0];
-  if (path === '/admin' || path === '/admin/login' || path === '/admin/new' || path.startsWith('/admin/')) return <AdminRoutes />;
+  if (path === '/admin' || path === '/admin/login' || path === '/admin/new' || path.startsWith('/admin/')) {
+    return (
+      <Suspense fallback={<div className="grid min-h-screen place-items-center bg-ink-50"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>}>
+        <AdminRoutes />
+      </Suspense>
+    );
+  }
   return (
     <>
       <Navbar />
       <BreakingNewsTicker />
       <main id="main-content" className="flex-1 animate-fade-in">
-        <PublicRoutes />
+        <Suspense fallback={null}>
+          <PublicRoutes />
+        </Suspense>
       </main>
       <Footer />
     </>

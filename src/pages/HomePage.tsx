@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Seo } from '../components/Seo';
 import { Link, useRouter } from '../router';
 import { BlogCard } from '../components/BlogCard';
@@ -68,22 +68,6 @@ export function HomePage() {
     { slug: 'career', title: 'Career Guidance', subtitle: 'Tips, syllabus & preparation strategy', icon: Lightbulb, items: career.slice(0, 6), viewAll: '/blog?category=career-tips' },
   ];
 
-  useEffect(() => {
-    const id = 'preload-hero';
-    if (!document.getElementById(id)) {
-      const link = document.createElement('link');
-      link.id = id;
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = 'https://images.pexels.com/photos/5905702/pexels-photo-5905702.jpeg';
-      link.setAttribute('fetchpriority', 'high');
-      document.head.appendChild(link);
-    }
-    return () => {
-      document.getElementById(id)?.remove();
-    };
-  }, []);
-
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
@@ -102,6 +86,8 @@ export function HomePage() {
             alt="Government job exam preparation"
             width={1920}
             height={1080}
+            fetchPriority="high"
+            decoding="async"
             className="h-full w-full object-cover"
           />
         </div>

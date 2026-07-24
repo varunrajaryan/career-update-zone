@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from '../router';
 import type { PostRow } from '../lib/supabase';
 import { categories } from '../content/categories';
@@ -5,7 +6,7 @@ import { Icon } from './Icon';
 import { formatDate } from '../lib/editor-utils';
 import { Clock, ArrowRight } from 'lucide-react';
 
-export function BlogCard({ post }: { post: PostRow }) {
+export const BlogCard = memo(function BlogCard({ post }: { post: PostRow }) {
   const cat = categories.find((c) => c.slug === post.category);
   return (
     <Link
@@ -18,6 +19,7 @@ export function BlogCard({ post }: { post: PostRow }) {
           src={post.cover}
           alt={post.title}
           loading="lazy"
+          decoding="async"
           width={640}
           height={400}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -47,4 +49,4 @@ export function BlogCard({ post }: { post: PostRow }) {
       </div>
     </Link>
   );
-}
+});
