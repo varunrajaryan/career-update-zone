@@ -7,8 +7,10 @@ import { RichTextEditor } from '../../components/RichTextEditor';
 import { YouTubeEmbed } from '../../components/YouTubeEmbed';
 import { categories } from '../../content/categories';
 import { slugify, extractYouTubeId, estimateReadTime } from '../../lib/editor-utils';
-import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2, Wand2, Link2, Loader2, FileText, Sparkles, Image as ImageIcon } from 'lucide-react';
+import type { ImportantLink } from '../../lib/supabase';
+import { ArrowLeft, Save, Eye, Trash2, Upload, Video, X, Plus, Search as SearchIcon, AlertCircle, CheckCircle2, Wand2, Link2, Loader2, FileText, Sparkles, Image as ImageIcon, LinkIcon, Trash } from 'lucide-react';
 import { useAiSettings } from '../../lib/useSiteSettings';
+import { suggestIcon } from '../../components/ImportantLinks';
 
 type Props = { slug?: string };
 type Faq = { q: string; a: string };
@@ -29,6 +31,8 @@ export function AdminEditorPage({ slug }: Props) {
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
   const [faqs, setFaqs] = useState<Faq[]>([]);
+  const [importantLinks, setImportantLinks] = useState<ImportantLink[]>([]);
+  const [linkUploading, setLinkUploading] = useState<number | null>(null);
   const [autoSlug, setAutoSlug] = useState(true);
   const [customSlug, setCustomSlug] = useState('');
   const [loading, setLoading] = useState(isEdit);
@@ -60,7 +64,7 @@ export function AdminEditorPage({ slug }: Props) {
       setYoutubeId(p.youtube_id || ''); setYoutubeUrl(p.youtube_id ? `https://www.youtube.com/watch?v=${p.youtube_id}` : '');
       setCategory(p.category); setTags(p.tags || []); setStatus(p.status as 'draft' | 'published');
       setSeoTitle(p.seo_title ?? ''); setSeoDescription(p.seo_description ?? '');
-      setFaqs(Array.isArray(p.faqs) ? p.faqs : []); setAutoSlug(false); setCustomSlug(p.slug);
+      setFaqs(Array.isArray(p.faqs) ? p.faqs : []); setImportantLinks(Array.isArray(p.important_links) ? p.important_links : []); setAutoSlug(false); setCustomSlug(p.slug);
       setLoading(false);
     })();
   }, [slug, isEdit]);
@@ -94,6 +98,31 @@ export function AdminEditorPage({ slug }: Props) {
   function addFaq() { setFaqs([...faqs, { q: '', a: '' }]); }
   function updateFaq(i: number, field: 'q' | 'a', val: string) { setFaqs(faqs.map((f, idx) => (idx === i ? { ...f, [field]: val } : f))); }
   function removeFaq(i: number) { setFaqs(faqs.filter((_, idx) => idx !== i)); }
+
+  function addImportantLink() {
+    setImportantLinks([...importantLinks, { title: '', type: 'url', url: '', icon: '' }]);
+  }
+  function updateImportantLink(i: number, field: keyof ImportantLink, val: string) {
+    setImportantLinks(importantLinks.map((l, idx) => (idx === i ? { ...l, [field]: val } : l)));
+  }
+  function removeImportantLink(i: number) {
+    setImportantLinks(importantLinks.filter((_, idx) => idx !== i));
+    if (linkUploading === i) setLinkUploading(null);
+  }
+
+  async function handleLinkFileUpload(i: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+    const base = slugify(`${finalSlug || slugify(title) || 'post'} ${importantLinks[i]?.title || 'document'}`);
+    const path = `links/career-update-zone-${base}.${ext}`;
+    setLinkUploading(i);
+    const { error: upErr } = await supabase.storage.from('post-images').upload(path, file, { cacheControl: '3600', upsert: true });
+    if (upErr) { setError('File upload failed: ' + upErr.message); setLinkUploading(null); return; }
+    const { data: pub } = supabase.storage.from('post-images').getPublicUrl(path);
+    updateImportantLink(i, 'url', pub.publicUrl);
+    setLinkUploading(null);
+  }
 
   async function handleGenerate() {
     setGenerateError(null);
@@ -171,6 +200,7 @@ export function AdminEditorPage({ slug }: Props) {
       read_time: estimateReadTime(body), seo_title: seoTitle.trim() || null,
       seo_description: seoDescription.trim() || null,
       faqs: faqs.filter((f) => f.q.trim() && f.a.trim()),
+      important_links: importantLinks.filter((l) => l.title.trim() && l.url.trim()).length > 0 ? importantLinks.filter((l) => l.title.trim() && l.url.trim()) : null,
     };
     if (isEdit) {
       const { error } = await supabase.from('blog_posts').update({ ...payload, last_updated: new Date().toISOString().slice(0, 10) }).eq('slug', slug!);
@@ -322,6 +352,56 @@ export function AdminEditorPage({ slug }: Props) {
                         <button type="button" onClick={() => removeFaq(i)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ink-100 text-ink-500 transition hover:bg-error-50 hover:text-error-600" aria-label="Remove FAQ"><X className="h-4 w-4" aria-hidden="true" /></button>
                       </div>
                       <textarea value={f.a} onChange={(e) => updateFaq(i, 'a', e.target.value)} placeholder="Answer" rows={2} className="mt-2 w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-700 focus:border-brand-400 focus:outline-none" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <label className="text-sm font-semibold text-ink-800">Important Links (Optional)</label>
+                <button type="button" onClick={addImportantLink} className="btn-ghost text-sm"><Plus className="h-4 w-4" aria-hidden="true" /> Add Link</button>
+              </div>
+              {importantLinks.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-400">No important links added. Click "Add Link" to add apply links, official websites, downloadable notifications, etc.</p>
+              ) : (
+                <div className="space-y-3">
+                  {importantLinks.map((link, i) => (
+                    <div key={i} className="rounded-2xl border border-ink-100 bg-ink-50/50 p-4">
+                      <div className="flex items-start gap-2">
+                        <input type="text" value={link.title} onChange={(e) => updateImportantLink(i, 'title', e.target.value)} placeholder="Link title (e.g. Apply Online, Official Website)" className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-950 focus:border-brand-400 focus:outline-none" />
+                        <select value={link.type} onChange={(e) => updateImportantLink(i, 'type', e.target.value)} className="shrink-0 rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none">
+                          <option value="url">External URL</option>
+                          <option value="file">Upload File</option>
+                        </select>
+                        <button type="button" onClick={() => removeImportantLink(i)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ink-100 text-ink-500 transition hover:bg-error-50 hover:text-error-600" aria-label="Remove link"><Trash className="h-4 w-4" aria-hidden="true" /></button>
+                      </div>
+                      <div className="mt-2">
+                        {link.type === 'url' ? (
+                          <input type="url" value={link.url} onChange={(e) => updateImportantLink(i, 'url', e.target.value)} placeholder="https://example.com" className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none" />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <label className="btn-ghost cursor-pointer text-sm whitespace-nowrap">
+                              {linkUploading === i ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Uploading…</> : <><Upload className="h-4 w-4" aria-hidden="true" /> Upload PDF / Image</>}
+                              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => handleLinkFileUpload(i, e)} className="hidden" />
+                            </label>
+                            {link.url && <span className="truncate text-xs text-success-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> {link.url.split('/').pop()}</span>}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <label className="text-xs text-ink-500 shrink-0">Icon:</label>
+                        <select value={link.icon || ''} onChange={(e) => updateImportantLink(i, 'icon', e.target.value)} className="rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-xs focus:border-brand-400 focus:outline-none">
+                          <option value="">Auto (based on title)</option>
+                          <option value="globe">🌐 Website</option>
+                          <option value="document">📄 Document</option>
+                          <option value="apply">📝 Apply</option>
+                          <option value="admit-card">🎫 Admit Card</option>
+                          <option value="result">🏆 Result</option>
+                          <option value="link">🔗 Link</option>
+                        </select>
+                        {link.icon === '' && link.title && <span className="text-xs text-ink-400">→ {suggestIcon(link.title)}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -6,6 +6,7 @@ import { FaqAccordion } from '../components/FaqAccordion';
 import { TableOfContents } from '../components/TableOfContents';
 import { PrevNextNav } from '../components/PrevNextNav';
 import { RelatedPosts } from '../components/RelatedPosts';
+import { ImportantLinks } from '../components/ImportantLinks';
 import { usePublishedPost, usePublishedPosts } from '../lib/usePosts';
 import { categories } from '../content/categories';
 import { Icon } from '../components/Icon';
@@ -114,6 +115,7 @@ export function BlogPostPage({ slug }: { slug: string }) {
                 <img src={post.cover} alt={post.title} width={1200} height={675} className="aspect-[16/9] w-full object-cover" />
               </div>
               <div className="prose-content mt-8" dangerouslySetInnerHTML={{ __html: processedBody }} />
+              <ImportantLinks links={post.important_links || []} />
               {post.youtube_id && (
                 <div className="mt-8">
                   <h2 className="font-display text-xl font-bold text-ink-950 mb-3">Related Video</h2>
