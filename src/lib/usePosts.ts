@@ -13,6 +13,43 @@ export function usePublishedPosts() {
   return { posts, loading };
 }
 
+export function useBreakingNews() {
+  const [posts, setPosts] = useState<PostRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchLatest = () => {
+      supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('status', 'published')
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(5)
+        .then(({ data }) => {
+          if (mounted && data) {
+            setPosts(data as PostRow[]);
+            setLoading(false);
+          }
+        });
+    };
+    fetchLatest();
+
+    const channel = supabase
+      .channel('breaking-news-ticker')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, fetchLatest)
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { posts, loading };
+}
+
 export function usePublishedPost(slug: string) {
   const [post, setPost] = useState<PostRow | null>(null);
   const [loading, setLoading] = useState(true);

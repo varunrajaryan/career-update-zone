@@ -1,19 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from '../router';
 import { Radio } from 'lucide-react';
-import { usePublishedPosts } from '../lib/usePosts';
+import { useBreakingNews } from '../lib/usePosts';
 import type { PostRow } from '../lib/supabase';
 
 export function BreakingNewsTicker() {
-  const { posts, loading } = usePublishedPosts();
-  const [items, setItems] = useState<PostRow[]>([]);
+  const { posts, loading } = useBreakingNews();
+  const [hovered, setHovered] = useState(false);
 
-  useEffect(() => {
-    if (!loading && posts.length > 0) setItems(posts.slice(0, 12));
-  }, [posts, loading]);
-
-  if (loading || items.length === 0) return null;
-  const doubled = [...items, ...items];
+  if (loading || posts.length === 0) return null;
+  const doubled: PostRow[] = [...posts, ...posts];
 
   return (
     <div className="border-b border-slate-200 bg-white">
@@ -22,10 +18,17 @@ export function BreakingNewsTicker() {
           <Radio className="h-3 w-3 animate-pulse" aria-hidden="true" />
           Breaking
         </span>
-        <div className="relative flex-1 overflow-hidden">
+        <div
+          className="relative flex-1 overflow-hidden"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-white to-transparent" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-white to-transparent" aria-hidden="true" />
-          <div className="flex w-max animate-cuz-marquee items-center gap-12 whitespace-nowrap py-0.5">
+          <div
+            className="flex w-max animate-cuz-marquee items-center gap-12 whitespace-nowrap py-0.5"
+            style={hovered ? { animationPlayState: 'paused' } : undefined}
+          >
             {doubled.map((p, i) => (
               <Link
                 key={`${p.id}-${i}`}

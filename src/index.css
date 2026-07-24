@@ -51,8 +51,10 @@
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-.animate-cuz-marquee { animation: cuz-marquee 45s linear infinite; }
-.animate-cuz-marquee:hover { animation-play-state: paused; }
+.animate-cuz-marquee { animation: cuz-marquee 75s linear infinite; }
+@media (hover: hover) {
+  .animate-cuz-marquee:hover { animation-play-state: paused; }
+}
 
 .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
 .reveal.reveal-visible { opacity: 1; transform: translateY(0); }
