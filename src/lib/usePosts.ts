@@ -13,7 +13,7 @@ export function usePublishedPosts() {
   return { posts, loading };
 }
 
-export function useBreakingNews() {
+export function useBreakingNews(channelName = 'breaking-news-ticker') {
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +37,7 @@ export function useBreakingNews() {
     fetchLatest();
 
     const channel = supabase
-      .channel('breaking-news-ticker')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, fetchLatest)
       .subscribe();
 
@@ -45,7 +45,7 @@ export function useBreakingNews() {
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [channelName]);
 
   return { posts, loading };
 }

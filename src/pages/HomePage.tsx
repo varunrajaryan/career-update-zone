@@ -4,7 +4,7 @@ import { Link, useRouter } from '../router';
 import { BlogCard } from '../components/BlogCard';
 import { Reveal } from '../components/Reveal';
 import { CountUp } from '../components/CountUp';
-import { usePublishedPosts } from '../lib/usePosts';
+import { usePublishedPosts, useBreakingNews } from '../lib/usePosts';
 import { useYouTubeChannel } from '../lib/useYouTube';
 import { channel } from '../content/channel';
 import { categories } from '../content/categories';
@@ -34,6 +34,7 @@ type QuickCat = { slug: string; name: string; icon: string; tint: string; iconBg
 
 export function HomePage() {
   const { posts, loading } = usePublishedPosts();
+  const { posts: latestNews } = useBreakingNews('home-latest-news');
   const { data: yt, loading: ytLoading } = useYouTubeChannel();
   const { navigate } = useRouter();
   const [query, setQuery] = useState('');
@@ -41,7 +42,6 @@ export function HomePage() {
   const jobs = useMemo(() => posts.filter((p) => p.category === 'latest-jobs' || p.category === 'bihar-jobs'), [posts]);
   const results = useMemo(() => posts.filter((p) => p.category === 'result'), [posts]);
   const admitCards = useMemo(() => posts.filter((p) => p.category === 'admit-card'), [posts]);
-  const news = useMemo(() => posts.filter((p) => p.category === 'exam-preparation' || p.category === 'scholarships'), [posts]);
   const career = useMemo(() => posts.filter((p) => p.category === 'career-tips' || p.category === 'syllabus'), [posts]);
 
   const stats: Stat[] = [
@@ -64,7 +64,7 @@ export function HomePage() {
     { slug: 'latest-jobs', title: 'Latest Jobs', subtitle: 'Fresh government job notifications', icon: Briefcase, items: jobs.slice(0, 6), viewAll: '/latest-jobs' },
     { slug: 'result', title: 'Latest Results', subtitle: 'Exam results and merit lists', icon: Trophy, items: results.slice(0, 6), viewAll: '/blog?category=result' },
     { slug: 'admit-card', title: 'Admit Cards', subtitle: 'Download hall tickets and call letters', icon: CreditCard, items: admitCards.slice(0, 6), viewAll: '/blog?category=admit-card' },
-    { slug: 'news', title: 'Latest News', subtitle: 'Exam updates and announcements', icon: Newspaper, items: news.slice(0, 6), viewAll: '/blog' },
+    { slug: 'news', title: 'Latest News', subtitle: 'Exam updates and announcements', icon: Newspaper, items: latestNews, viewAll: '/blog' },
     { slug: 'career', title: 'Career Guidance', subtitle: 'Tips, syllabus & preparation strategy', icon: Lightbulb, items: career.slice(0, 6), viewAll: '/blog?category=career-tips' },
   ];
 
